@@ -1,0 +1,10 @@
+[project]
+name = "simple-bot-messages-api"
+version = "0.1.0"
+description = "Простое REST API для обработки сообщений от бота"
+readme = "README.md"
+authors = [
+    { name = "Скатинцев Дмитрий Сергеевич", email = "d.chistyakov@samolet.ru" },
+]
+requires-python = ">=3.13, <3.14"
+dependencies = []
