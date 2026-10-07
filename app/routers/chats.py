@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 from typing import Annotated
 
@@ -8,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import models
 from app.database import get_db
 from app.schemas import ChatApplicationDB, TakeChat
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -23,6 +26,11 @@ async def take_chat(
 
     Если диалог уже был занят, возвращает ошибку 409.
     """
+    log.debug(
+        'Оператор пытается взять чат в работу operator_id=%s chat_id=%s',
+        body.operator_id,
+        chat_id,
+    )
     result = await db.execute(
         select(models.ChatApplication)
         .where(

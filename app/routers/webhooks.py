@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 from typing import Annotated
 
@@ -11,6 +12,8 @@ from app.config import settings
 from app.database import get_db
 from app.schemas import MessageCreate, MessageDB
 from app.services.reply import send_reply
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -35,6 +38,13 @@ async def post_message(
             detail='Invalid or missing X-Webhook-Secret header',
         )
 
+    log.debug(
+        'Сохранение сообщения bot_id=%s message_id=%s chat_id=%s user_id=%s',
+        message.bot_id,
+        message.message_id,
+        message.chat_id,
+        message.user_id,
+    )
     db_message = models.Message(
         bot_id=message.bot_id,
         message_id=message.message_id,
@@ -50,6 +60,7 @@ async def post_message(
     except IntegrityError:
         await db.rollback()
 
+        log.debug('Сообщение message_id=%s уже есть в БД', message.message_id)
         result = await db.execute(
             select(models.Message).where(
                 models.Message.message_id == message.message_id,
@@ -60,6 +71,7 @@ async def post_message(
     response = MessageDB.model_validate(db_message)
 
     # Проверяем, есть ли открытая заявка по чату. Если нет - создаём её
+    log.debug('Поиск открытой заявки по чату chat_id=%s', message.chat_id)
     result = await db.execute(
         select(models.ChatApplication).where(
             models.ChatApplication.chat_id == message.chat_id,
@@ -68,6 +80,11 @@ async def post_message(
     )
     created_application = False
     if result.scalars().first() is None:
+        log.debug(
+            'Создание новой заявки для chat_id=%s user_id=%s',
+            message.chat_id,
+            message.user_id,
+        )
         db.add(
             models.ChatApplication(
                 chat_id=message.chat_id,
@@ -82,6 +99,7 @@ async def post_message(
             created_application = True
         except IntegrityError:
             # Race Condition: по чату найдена активная заявка (проверка на стороне БД)
+            log.debug('Открытая заявка уже есть по чату chat_id=%s', message.chat_id)
             await db.rollback()
 
     # Если делать проверку не на стороне БД, а на стороне Python:
@@ -114,6 +132,7 @@ async def post_message(
     #         created_application = True
 
     if created_application:
+        log.debug('Отправка ответа в чат chat_id=%s', message.chat_id)
         background_tasks.add_task(send_reply, chat_id=message.chat_id)
 
     return response
