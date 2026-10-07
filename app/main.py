@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.database import Base, engine, get_db
-from app.routers import webhooks
+from app.routers import webhooks, chats
 
 
 @asynccontextmanager
@@ -29,6 +29,7 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 app.include_router(webhooks.router, prefix='/webhooks', tags=['webhooks'])
+app.include_router(chats.router, prefix='/chats', tags=['chats'])
 
 
 @app.get('/health')
