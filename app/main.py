@@ -1,9 +1,16 @@
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, status, Request
+from fastapi.exception_handlers import (
+    http_exception_handler,
+    request_validation_exception_handler,
+)
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.database import Base, engine, get_db
 from app.routers import webhooks
@@ -34,3 +41,30 @@ async def health_check(db: Annotated[AsyncSession, Depends(get_db)]):
             detail='Database unavailable',
         ) from exc
     return {'status': 'healthy'}
+
+
+@app.exception_handler(StarletteHTTPException)
+async def general_http_exception_handler(
+    request: Request,
+    exception: StarletteHTTPException,
+):
+    return await http_exception_handler(request, exception)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(
+    request: Request,
+    exception: RequestValidationError,
+):
+    return await request_validation_exception_handler(request, exception)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(
+    request: Request,
+    exception: Exception,
+):
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={'detail': 'Internal Server Error'},
+    )
