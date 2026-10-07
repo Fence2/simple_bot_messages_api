@@ -6,6 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import Base, engine, get_db
+from app.routers import webhooks
 
 
 @asynccontextmanager
@@ -19,6 +20,8 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+app.include_router(webhooks.router, prefix='/webhooks', tags=['webhooks'])
 
 
 @app.get('/health')

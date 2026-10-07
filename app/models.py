@@ -8,6 +8,7 @@ from sqlalchemy import (
     Index,
     String,
     Text,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -31,6 +32,14 @@ class Message(Base):
 
 class ChatApplication(Base):
     __tablename__ = 'chat_application'
+    __table_args__ = (
+        Index(
+            'uq_chat_application_open_chat_id',
+            'chat_id',
+            unique=True,
+            postgresql_where=text("status <> 'closed'"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     chat_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
